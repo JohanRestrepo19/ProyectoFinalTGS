@@ -1,33 +1,86 @@
 breed [personas persona]
-personas-own [estadoSalud] ;Los estados de salud pueden ser 0: Vulnerable, 1: Contagiada, 2: Recuperada
 
+personas-own [estadoContagio rangoEdad nivelEnfermedadPreexistente probabilidadMuerte tiempoConCovid]
+
+globals [colorContagiado]
+
+;------------------------------------------------------------------
 
 to ConstruirMundo
   let totalParcelas (count patches)
   show totalParcelas
-  ask patches [set pcolor gray]
+  ask patches [set pcolor white]
 
-  ask n-of (totalParcelas * (20 / 100)) patches [set pcolor brown]
+  ;ask n-of (totalParcelas * (20 / 100)) patches [set pcolor brown]
 
 end
 
 to CrearPersonas [cantidadPersonas]
+
+  let cantidadJovenes (cantidadPersonas * (41 / 100))
+  let cantidadAdultos (cantidadPersonas * (42 / 100))
+  let cantidadAncianos (cantidadPersonas * (17 / 100))
+
   create-personas cantidadPersonas
   [
+    set estadoContagio "vulnerable"
+    set rangoEdad "indefinido"
+    set probabilidadMuerte 0
+    set nivelEnfermedadPreexistente "inexistente"
+    set tiempoConCovid 0
+
     set color green
-    set estadoSalud 0 ; Estado de salud 0 significa que son vulnerables
     setxy random-xcor random-ycor
   ]
 
-  ask one-of personas [set estadoSalud 1 set color red]
+  ask n-of cantidadJovenes personas with [rangoEdad = "indefinido"]
+  [
+    set shape "person student"
+    set rangoEdad "joven"
+
+  ]
+
+  ask n-of cantidadAdultos personas with [rangoEdad = "indefinido"]
+  [
+    set shape "persona adulta"
+    set rangoEdad "adulto"
+  ]
+
+  ask n-of cantidadAncianos personas with [rangoEdad = "indefinido"]
+  [
+    set shape "persona anciana"
+    set rangoEdad "anciano"
+  ]
+
+
+
+  ;create-personas cantidadPersonas
+  ;[
+    ;set rangoEdad ""
+
+
+
+    ;set color green
+    ;set estadoSalud 0 ; Estado de salud 0 significa que son vulnerables
+    ;setxy random-xcor random-ycor
+  ;]
+
+  ask one-of personas [set estadoContagio "contagiado" set color colorContagiado]
 end
 
 to MoverPersonas
-  ask personas [rt (random 50 - random 50) fd 0.1]
+
+  ask personas
+  [
+    ifelse (can-move? 1)
+    [rt (random 50 - random 50) fd 0.1]
+    [rt 180]
+  ]
+
 end
 
 to Contagiar
-  ask personas with [estadoSalud = 1] [ask personas in-radius 0.5 [set estadoSalud 1 set color red] ]
+  ask personas with [estadoContagio = "contagiado"] [ask personas in-radius 0.5 [set estadoContagio "contagiado" set color colorContagiado] ]
 end
 
 to Ejecutar
@@ -40,10 +93,10 @@ to setUp
   ca
   reset-ticks
   set-default-shape personas "person"
+  set colorContagiado pink
   ConstruirMundo
   CrearPersonas poblacionTotal
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -115,7 +168,7 @@ poblacionTotal
 poblacionTotal
 0
 1000
-0.0
+200.0
 10
 1
 NIL
@@ -337,6 +390,63 @@ Polygon -7500403 true true 105 90 120 195 90 285 105 300 135 300 150 225 165 300
 Rectangle -7500403 true true 127 79 172 94
 Polygon -7500403 true true 195 90 240 150 225 180 165 105
 Polygon -7500403 true true 105 90 60 150 75 180 135 105
+
+person student
+false
+0
+Polygon -13791810 true false 135 90 150 105 135 165 150 180 165 165 150 105 165 90
+Polygon -7500403 true true 195 90 240 195 210 210 165 105
+Circle -7500403 true true 110 5 80
+Rectangle -7500403 true true 127 79 172 94
+Polygon -7500403 true true 105 90 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285 180 195 195 90
+Polygon -1 true false 100 210 130 225 145 165 85 135 63 189
+Polygon -13791810 true false 90 210 120 225 135 165 67 130 53 189
+Polygon -1 true false 120 224 131 225 124 210
+Line -16777216 false 139 168 126 225
+Line -16777216 false 140 167 76 136
+Polygon -7500403 true true 105 90 60 195 90 210 135 105
+
+persona adulta
+false
+0
+Rectangle -1 true false 120 90 180 180
+Polygon -13345367 true false 135 90 150 105 135 180 150 195 165 180 150 105 165 90
+Polygon -7500403 true true 120 90 105 90 60 195 90 210 116 154 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285 180 195 183 153 210 210 240 195 195 90 180 90 150 165
+Circle -7500403 true true 110 5 80
+Rectangle -7500403 true true 127 76 172 91
+Line -16777216 false 172 90 161 94
+Line -16777216 false 128 90 139 94
+Polygon -13345367 true false 195 225 195 300 270 270 270 195
+Rectangle -13791810 true false 180 225 195 300
+Polygon -14835848 true false 180 226 195 226 270 196 255 196
+Polygon -13345367 true false 209 202 209 216 244 202 243 188
+Line -16777216 false 180 90 150 165
+Line -16777216 false 120 90 150 165
+
+persona anciana
+false
+0
+Polygon -7500403 true true 105 90 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285 180 195 195 90
+Polygon -2674135 true false 60 196 90 211 114 155 120 196 180 196 187 158 210 211 240 196 195 91 165 91 150 106 150 135 135 91 105 91
+Circle -7500403 true true 110 5 80
+Rectangle -7500403 true true 127 79 172 94
+Polygon -6459832 true false 174 90 181 90 180 195 165 195
+Polygon -13345367 true false 180 195 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285
+Polygon -6459832 true false 126 90 119 90 120 195 135 195
+Line -16777216 false 135 165 165 165
+Line -16777216 false 135 135 165 135
+Line -16777216 false 90 135 120 135
+Line -16777216 false 105 120 120 120
+Line -16777216 false 180 120 195 120
+Line -16777216 false 180 135 210 135
+Line -16777216 false 90 150 105 165
+Line -16777216 false 225 165 210 180
+Line -16777216 false 75 165 90 180
+Line -16777216 false 210 150 195 165
+Line -16777216 false 180 105 210 180
+Line -16777216 false 120 105 90 180
+Line -16777216 false 150 135 150 165
+Polygon -6459832 true false 105 30 104 44 195 30 185 10 173 10 166 1 138 -1 111 3 109 28
 
 plant
 false
