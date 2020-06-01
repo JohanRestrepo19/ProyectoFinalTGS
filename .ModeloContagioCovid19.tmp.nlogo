@@ -23,33 +23,32 @@ to CrearPersonas [cantidadPersonas]
 
   create-personas cantidadPersonas
   [
-    set estadoContagio "vulnerable"
-    set rangoEdad "indefinido"
+    set estadoContagio 1;  estadoContagio -----> 0: indefinido   1: vulnerable   2: contagiado   3: recuperado
+    set rangoEdad 0;       rango edad ---------> 0: indefinido   1: joven        2: adulto       3: anciano
     set probabilidadMuerte 0
-    set nivelEnfermedadPreexistente "inexistente"
+    set nivelEnfermedadPreexistente 1;  nivelEnfermedadPreexistente ----> 0: indefinido   1: inexistente   2: leve   3: medio   4: terminal
     set tiempoConCovid 0
 
     set color green
     setxy random-xcor random-ycor
   ]
 
-  ask n-of cantidadJovenes personas with [rangoEdad = "indefinido"]
+  ask n-of cantidadJovenes personas with [rangoEdad = 0]
   [
     set shape "person student"
-    set rangoEdad "joven"
-
+    set rangoEdad 1
   ]
 
-  ask n-of cantidadAdultos personas with [rangoEdad = "indefinido"]
+  ask n-of cantidadAdultos personas with [rangoEdad = 0]
   [
     set shape "persona adulta"
-    set rangoEdad "adulto"
+    set rangoEdad 2
   ]
 
-  ask n-of cantidadAncianos personas with [rangoEdad = "indefinido"]
+  ask n-of cantidadAncianos personas with [rangoEdad = 0]
   [
     set shape "persona anciana"
-    set rangoEdad "anciano"
+    set rangoEdad 3
   ]
 
 
@@ -65,7 +64,7 @@ to CrearPersonas [cantidadPersonas]
     ;setxy random-xcor random-ycor
   ;]
 
-  ask one-of personas [set estadoContagio "vulnerable" set color colorContagiado]
+  ask one-of personas [set estadoContagio 2 set color colorContagiado]
 end
 
 to MoverPersonas
@@ -80,8 +79,7 @@ to MoverPersonas
 end
 
 to Contagiar
-  ;ask personas with estadoContagiado
-  ask personas with [estadoContagio = "] [ask personas in-radius 0.5 [set estadoContagio 1 set color colorContagiado] ]
+  ask personas with [estadoContagio = 2] [ask personas in-radius 0.5 [set estadoContagio 2 set color colorContagiado] ]
 end
 
 to Ejecutar
