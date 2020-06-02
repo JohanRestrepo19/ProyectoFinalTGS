@@ -64,21 +64,21 @@ to CrearPersonas [cantidadPersonas]
   [
     set shape "person student"
     set rangoEdad 1
-    set probabilidadMuerte 10 ; ----> Los jovenes tienen 10% de probabilidades de morir
+    set probabilidadMuerte 2 ; ----> Los jovenes tienen 10% de probabilidades de morir
   ]
 
   ask n-of cantidadAdultos personas with [rangoEdad = 0]
   [
     set shape "persona adulta"
     set rangoEdad 2
-    set probabilidadMuerte 15 ; ----> Los adultos tienen 15% de probabilidades de morir
+    set probabilidadMuerte 5 ; ----> Los adultos tienen 15% de probabilidades de morir
   ]
 
   ask n-of cantidadAncianos personas with [rangoEdad = 0]
   [
     set shape "persona anciana"
     set rangoEdad 3
-    set probabilidadMuerte 50 ; ----> Los ancianos tienen un 50% de probabilidades de morir
+    set probabilidadMuerte 10 ; ----> Los ancianos tienen un 30% de probabilidades de morir
   ]
 
   ;-------------- asignacion de enfermedades-----------------------------------
@@ -139,7 +139,7 @@ end
 
 to GenerarMuertesPersonas
   let numeroRandom 0
-  set numeroRandom (random 10000)
+  set numeroRandom (random 100)
 
   ask personas with [(estadoContagio = 2) and (tiempoConCovid > 168)]
   [
