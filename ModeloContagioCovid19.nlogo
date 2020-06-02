@@ -64,21 +64,21 @@ to CrearPersonas [cantidadPersonas]
   [
     set shape "person student"
     set rangoEdad 1
-    set probabilidadMuerte 2 ; ----> Los jovenes tienen 10% de probabilidades de morir
+    set probabilidadMuerte 3 ; ----> Los jovenes tienen 5% de probabilidades de morir
   ]
 
   ask n-of cantidadAdultos personas with [rangoEdad = 0]
   [
     set shape "persona adulta"
     set rangoEdad 2
-    set probabilidadMuerte 5 ; ----> Los adultos tienen 15% de probabilidades de morir
+    set probabilidadMuerte 7 ; ----> Los adultos tienen 7% de probabilidades de morir
   ]
 
   ask n-of cantidadAncianos personas with [rangoEdad = 0]
   [
     set shape "persona anciana"
     set rangoEdad 3
-    set probabilidadMuerte 10 ; ----> Los ancianos tienen un 30% de probabilidades de morir
+    set probabilidadMuerte 30 ; ----> Los ancianos tienen un 30% de probabilidades de morir
   ]
 
   ;-------------- asignacion de enfermedades-----------------------------------
@@ -118,13 +118,23 @@ to Contagiar
 end
 
 to RevisarEstadoPersonas
+  let numeroRandom 0
+  set numeroRandom (random 100)
 
-  ask personas with [estadoContagio = 2]
+  ask personas with [(estadoContagio = 2) and (vivo? = true)]
   [
     ifelse(tiempoConCovid = tiempoRecuperacionContagio)
     [
-      set estadoContagio 3
-      set color turquoise
+      ifelse (member? numeroRandom (range probabilidadMuerte))
+      [
+        set vivo? false
+        hide-turtle
+        set estadoContagio 0
+      ]
+      [
+        set estadoContagio 3
+        set color turquoise
+      ]
     ]
     [
       set tiempoConCovid (tiempoConCovid + 1)
@@ -137,21 +147,6 @@ to ActualizarDiasTranscurridos
   [set diasTranscurridos (diasTranscurridos + 1)]
 end
 
-to GenerarMuertesPersonas
-  let numeroRandom 0
-  set numeroRandom (random 100)
-
-  ask personas with [(estadoContagio = 2) and (tiempoConCovid > 168)]
-  [
-    if(member? numeroRandom (range probabilidadMuerte))
-    [
-      set vivo? false
-      hide-turtle
-      set estadoContagio 0
-    ]
-  ]
-end
-
 
 to Ejecutar
   if( (count personas with [estadoContagio = 2]) = 0)
@@ -160,7 +155,6 @@ to Ejecutar
   MoverPersonas
   Contagiar
   RevisarEstadoPersonas
-  GenerarMuertesPersonas
   ActualizarDiasTranscurridos
   tick
 end
@@ -184,7 +178,7 @@ GRAPHICS-WINDOW
 448
 -1
 -1
-13.0
+12.8
 1
 10
 1
@@ -287,10 +281,10 @@ diasTranscurridos
 11
 
 PLOT
-669
-296
-994
-468
+664
+353
+989
+525
 Grafico
 dias
 NIL
@@ -328,10 +322,10 @@ count personas with [estadoContagio = 3]
 11
 
 MONITOR
-690
-208
-827
-253
+689
+210
+826
+255
 Personas muertas
 count personas with [(vivo? = false) and (hidden? = true)]
 17
@@ -400,6 +394,17 @@ MONITOR
 199
 Ancianos muertos
 count personas with [(rangoEdad = 3) and (vivo? = false)]
+17
+1
+11
+
+MONITOR
+694
+278
+829
+323
+Personas vivas
+count personas with [vivo? = true and (hidden? = false)]
 17
 1
 11
