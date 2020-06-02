@@ -1,8 +1,8 @@
 breed [personas persona]
 
-personas-own [estadoContagio rangoEdad nivelEnfermedadPreexistente probabilidadMuerte tiempoConCovid]
+personas-own [estadoContagio rangoEdad nivelEnfermedadPreexistente probabilidadMuerte tiempoConCovid vivo?]
 
-globals [colorContagiado]
+globals [colorContagiado diasTranscurridos]
 
 ;------------------------------------------------------------------
 
@@ -17,9 +17,9 @@ end
 
 to CrearPersonas [cantidadPersonas]
 
-  let cantidadJovenes (cantidadPersonas * (41 / 100))
-  let cantidadAdultos (cantidadPersonas * (42 / 100))
-  let cantidadAncianos (cantidadPersonas * (17 / 100))
+  let cantidadJovenes (cantidadPersonas * (41 / 100)) ; 41% de la poblacion es joven
+  let cantidadAdultos (cantidadPersonas * (42 / 100)) ; 42% de la poblacion es adulta
+  let cantidadAncianos (cantidadPersonas * (17 / 100)) ; 17% de al poblacion es anciana
 
   create-personas cantidadPersonas
   [
@@ -28,9 +28,16 @@ to CrearPersonas [cantidadPersonas]
     set probabilidadMuerte 0
     set nivelEnfermedadPreexistente 1;  nivelEnfermedadPreexistente ----> 0: indefinido   1: inexistente   2: leve   3: medio   4: terminal
     set tiempoConCovid 0
+    set vivo? true
 
     set color green
-    setxy random-xcor random-ycor
+    setxy (random-xcor) (random-ycor)
+  ]
+
+  ask personas
+  [
+    if(patch-ahead 1 = nobody); esto lo que hace es verificar si se encentran en una parcela de la que no pueden moverse y reposiciona a las personas
+    [setxy random-xcor random-ycor]
   ]
 
   ask n-of cantidadJovenes personas with [rangoEdad = 0]
@@ -51,19 +58,6 @@ to CrearPersonas [cantidadPersonas]
     set rangoEdad 3
   ]
 
-
-
-  ;create-personas cantidadPersonas
-  ;[
-    ;set rangoEdad ""
-
-
-
-    ;set color green
-    ;set estadoSalud 0 ; Estado de salud 0 significa que son vulnerables
-    ;setxy random-xcor random-ycor
-  ;]
-
   ask one-of personas [set estadoContagio 2 set color colorContagiado]
 end
 
@@ -71,7 +65,7 @@ to MoverPersonas
 
   ask personas
   [
-    ifelse (can-move? 1)
+    ifelse (can-move? 0.5)
     [rt (random 50 - random 50) fd 0.1]
     [rt 180]
   ]
@@ -82,9 +76,23 @@ to Contagiar
   ask personas with [estadoContagio = 2] [ask personas in-radius 0.5 [set estadoContagio 2 set color colorContagiado] ]
 end
 
+to RevisarEstadoPersonas
+
+end
+
+to ActualizarDiasTranscurridos
+  if( (ticks > 1) and ((ticks mod 24) = 0) )
+  [set diasTranscurridos (diasTranscurridos + 1)]
+end
+
+
 to Ejecutar
+  if( (count personas with [estadoContagio = 1]) = 0)
+  [stop]
   MoverPersonas
   Contagiar
+  RevisarEstadoPersonas
+  ActualizarDiasTranscurridos
   tick
 end
 
@@ -93,6 +101,7 @@ to setUp
   reset-ticks
   set-default-shape personas "person"
   set colorContagiado pink
+  set diasTranscurridos 0
   ConstruirMundo
   CrearPersonas poblacionTotal
 end
@@ -167,11 +176,73 @@ poblacionTotal
 poblacionTotal
 0
 1000
-200.0
+500.0
 10
 1
 NIL
 HORIZONTAL
+
+MONITOR
+718
+64
+849
+109
+Personas vulnerables
+count personas with [estadoContagio = 1]
+17
+1
+11
+
+MONITOR
+719
+120
+853
+165
+Personas contagiadas
+count personas with [estadoContagio = 2]
+17
+1
+11
+
+MONITOR
+873
+66
+985
+111
+Días transcurridos
+diasTranscurridos
+17
+1
+11
+
+PLOT
+686
+213
+1011
+385
+Grafico
+dias
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Personas contagiadas" 1.0 0 -2064490 true "" "plotxy (diasTranscurridos) (count personas with [estadoContagio = 2])"
+"Personas vulnerables" 1.0 0 -13840069 true "" "plotxy (diasTranscurridos) (count personas with [estadoContagio = 1])"
+
+CHOOSER
+13
+193
+188
+238
+escenario
+escenario
+"Libertad total" "Cuarentena" "Aislamiento moderado" "Aislamiento exhaustivo"
+0
 
 @#$#@#$#@
 ## WHAT IS IT?
