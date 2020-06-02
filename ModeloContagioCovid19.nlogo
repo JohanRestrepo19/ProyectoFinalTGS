@@ -1,18 +1,36 @@
 breed [personas persona]
 
-personas-own [estadoContagio rangoEdad nivelEnfermedadPreexistente probabilidadMuerte tiempoConCovid]
+personas-own [estadoContagio rangoEdad nivelEnfermedadPreexistente probabilidadMuerte tiempoConCovid vivo?]
 
-globals [colorContagiado diasTranscurridos]
+globals [colorContagiado diasTranscurridos tiempoRecuperacionContagio]
 
 ;------------------------------------------------------------------
 
-to ConstruirMundo
-  let totalParcelas (count patches)
-  show totalParcelas
-  ask patches [set pcolor white]
+to ConstruirMundo; terminar craacon mundo
+  let xcorFranja ceiling (((world-width / 2) / 3) * -1)
+  show xcorFranja
 
-  ;ask n-of (totalParcelas * (20 / 100)) patches [set pcolor brown]
+  ifelse(escenario = "Libertad total")
+  [
+    ask patches [set pcolor white]
+  ]
+  [
+    ifelse(escenario = "Cuarentena")
+    [
+      ask patches [set pcolor white]
+      ask patches with [pxcor = xcorFranja] [set pcolor black]
+    ]
+    [
+      ifelse(escenario = "Aislamiento moderado")
+      []
+      [
+        if(escenario = "Aislamiento exhaustivo")
+        []
+      ]
+    ]
+  ]
 
+  ;ask patches [set pcolor white]
 end
 
 to CrearPersonas [cantidadPersonas]
@@ -20,6 +38,8 @@ to CrearPersonas [cantidadPersonas]
   let cantidadJovenes (cantidadPersonas * (41 / 100)) ; 41% de la poblacion es joven
   let cantidadAdultos (cantidadPersonas * (42 / 100)) ; 42% de la poblacion es adulta
   let cantidadAncianos (cantidadPersonas * (17 / 100)) ; 17% de al poblacion es anciana
+  let cantidadPersonasEnfermas (cantidadPersonas * (15 / 100)) ; 15% de la poblacion tiene algun nivel de enfermedad
+  let nivelEnfermedad [2 3 4]
 
   create-personas cantidadPersonas
   [
@@ -28,6 +48,7 @@ to CrearPersonas [cantidadPersonas]
     set probabilidadMuerte 0
     set nivelEnfermedadPreexistente 1;  nivelEnfermedadPreexistente ----> 0: indefinido   1: inexistente   2: leve   3: medio   4: terminal
     set tiempoConCovid 0
+    set vivo? true
 
     set color green
     setxy (random-xcor) (random-ycor)
@@ -43,21 +64,41 @@ to CrearPersonas [cantidadPersonas]
   [
     set shape "person student"
     set rangoEdad 1
+    set probabilidadMuerte 10 ; ----> Los jovenes tienen 10% de probabilidades de morir
   ]
 
   ask n-of cantidadAdultos personas with [rangoEdad = 0]
   [
     set shape "persona adulta"
     set rangoEdad 2
+    set probabilidadMuerte 15 ; ----> Los adultos tienen 15% de probabilidades de morir
   ]
 
   ask n-of cantidadAncianos personas with [rangoEdad = 0]
   [
     set shape "persona anciana"
     set rangoEdad 3
+    set probabilidadMuerte 50 ; ----> Los ancianos tienen un 50% de probabilidades de morir
   ]
 
+  ;-------------- asignacion de enfermedades-----------------------------------
+
+  ask n-of cantidadPersonasEnfermas personas
+  [
+    set nivelEnfermedadPreexistente (one-of nivelEnfermedad) ; Al porcentaje de la población que está enferma se le asígna un nivel de enfermedad al azar
+  ]
+
+  ;-----------------------------------------------------------------------------
+
   ask one-of personas [set estadoContagio 2 set color colorContagiado]
+end
+
+to EstablecerProbabilidadMuerte
+  ask personas with [nivelEnfermedadPreexistente = 2] [set probabilidadMuerte (probabilidadMuerte + 5)] ;Las personas que tengan un nivel de enfermedad leve se le suma un 5% en probabilidad de morir
+
+  ask personas with [nivelEnfermedadPreexistente = 3] [set probabilidadMuerte (probabilidadMuerte + 10)] ;Las personas que tengan un nivel de enfermedad medio se le suma un 10%
+
+  ask personas with [nivelEnfermedadPreexistente = 4] [set probabilidadMuerte (probabilidadMuerte + 15)] ;Las personas que tengan un nivel de enfermedad terminal se le suma un 15%
 end
 
 to MoverPersonas
@@ -72,7 +113,23 @@ to MoverPersonas
 end
 
 to Contagiar
-  ask personas with [estadoContagio = 2] [ask personas in-radius 0.5 [set estadoContagio 2 set color colorContagiado] ]
+  ask personas with [(estadoContagio = 2) and (vivo? = true)] [ask personas in-radius 0.5 with [(estadoContagio = 1) and (vivo? = true)] [set estadoContagio 2 set color colorContagiado]]
+  ;ask personas with [(estadoContagio = 2) and (vivo? = true)] [ask personas in-radius 0.5 [set estadoContagio 2 set color colorContagiado] ]
+end
+
+to RevisarEstadoPersonas
+
+  ask personas with [estadoContagio = 2]
+  [
+    ifelse(tiempoConCovid = tiempoRecuperacionContagio)
+    [
+      set estadoContagio 3
+      set color turquoise
+    ]
+    [
+      set tiempoConCovid (tiempoConCovid + 1)
+    ]
+  ]
 end
 
 to ActualizarDiasTranscurridos
@@ -80,13 +137,30 @@ to ActualizarDiasTranscurridos
   [set diasTranscurridos (diasTranscurridos + 1)]
 end
 
+to GenerarMuertesPersonas
+  let numeroRandom 0
+  set numeroRandom (random 10000)
+
+  ask personas with [(estadoContagio = 2) and (tiempoConCovid > 168)]
+  [
+    if(member? numeroRandom (range probabilidadMuerte))
+    [
+      set vivo? false
+      hide-turtle
+      set estadoContagio 0
+    ]
+  ]
+end
+
 
 to Ejecutar
-  if( (count personas with [estadoContagio = 1]) = 0)
+  if( (count personas with [estadoContagio = 2]) = 0)
   [stop]
+
   MoverPersonas
   Contagiar
   RevisarEstadoPersonas
+  GenerarMuertesPersonas
   ActualizarDiasTranscurridos
   tick
 end
@@ -97,8 +171,10 @@ to setUp
   set-default-shape personas "person"
   set colorContagiado pink
   set diasTranscurridos 0
+  set tiempoRecuperacionContagio 336 ; 336 ticks son 14 días que tarda la recuperacion de una persona que ha estado contagiada
   ConstruirMundo
   CrearPersonas poblacionTotal
+  EstablecerProbabilidadMuerte
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -171,17 +247,17 @@ poblacionTotal
 poblacionTotal
 0
 1000
-500.0
+200.0
 10
 1
 NIL
 HORIZONTAL
 
 MONITOR
-718
-64
-849
-109
+690
+15
+821
+60
 Personas vulnerables
 count personas with [estadoContagio = 1]
 17
@@ -189,10 +265,10 @@ count personas with [estadoContagio = 1]
 11
 
 MONITOR
-719
-120
-853
-165
+691
+71
+825
+116
 Personas contagiadas
 count personas with [estadoContagio = 2]
 17
@@ -200,10 +276,10 @@ count personas with [estadoContagio = 2]
 11
 
 MONITOR
-873
-66
-985
-111
+891
+217
+1003
+262
 Días transcurridos
 diasTranscurridos
 17
@@ -211,10 +287,10 @@ diasTranscurridos
 11
 
 PLOT
-686
-213
-1011
-385
+669
+296
+994
+468
 Grafico
 dias
 NIL
@@ -226,8 +302,9 @@ true
 true
 "" ""
 PENS
-"Personas contagiadas" 1.0 0 -2064490 true "" "plotxy (diasTranscurridos) (count personas with [estadoContagio = 2])"
-"Personas vulnerables" 1.0 0 -13840069 true "" "plotxy (diasTranscurridos) (count personas with [estadoContagio = 1])"
+"Personas contagiadas" 1.0 0 -2064490 true "" "plotxy (diasTranscurridos) (count personas with [ (estadoContagio = 2) and (vivo? = true)])"
+"Personas vulnerables" 1.0 0 -13840069 true "" "plotxy (diasTranscurridos) (count personas with [(estadoContagio = 1) and (vivo? = true)])"
+"Personas recuperadas" 1.0 0 -14835848 true "" "plotxy (diasTranscurridos) (count personas with [estadoContagio = 3 and (vivo? = true)])"
 
 CHOOSER
 13
@@ -238,6 +315,94 @@ escenario
 escenario
 "Libertad total" "Cuarentena" "Aislamiento moderado" "Aislamiento exhaustivo"
 0
+
+MONITOR
+689
+133
+825
+178
+Personas recuperadas
+count personas with [estadoContagio = 3]
+17
+1
+11
+
+MONITOR
+690
+208
+827
+253
+Personas muertas
+count personas with [(vivo? = false) and (hidden? = true)]
+17
+1
+11
+
+MONITOR
+891
+19
+983
+64
+Jovenes vivos
+count personas with [rangoEdad = 1 and (vivo? = true)]
+17
+1
+11
+
+MONITOR
+889
+84
+976
+129
+Adultos vivos
+count personas with [rangoEdad = 2 and (vivo? = true)]
+17
+1
+11
+
+MONITOR
+889
+154
+984
+199
+Ancianos vivos
+count personas with [(rangoEdad = 3) and (vivo? = true)]
+17
+1
+11
+
+MONITOR
+1009
+18
+1104
+63
+Jovenes muertos
+count personas with [rangoEdad = 1 and (vivo? = false)]
+17
+1
+11
+
+MONITOR
+1011
+86
+1114
+131
+Adultos muertos
+count personas with [rangoEdad = 2 and (vivo? = false)]
+17
+1
+11
+
+MONITOR
+1008
+154
+1119
+199
+Ancianos muertos
+count personas with [(rangoEdad = 3) and (vivo? = false)]
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
