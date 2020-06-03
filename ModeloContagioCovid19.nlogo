@@ -8,7 +8,7 @@ globals [colorContagiado diasTranscurridos tiempoRecuperacionContagio xcorFranja
 
 ;------------------------------------------------------------------
 
-to ConstruirMundo; terminar craacon mundo
+to ConstruirMundo
 
   ifelse(escenario = "Libertad total")
   [
@@ -29,8 +29,6 @@ to ConstruirMundo; terminar craacon mundo
       ]
     ]
   ]
-
-  ;ask patches [set pcolor white]
 end
 
 to CrearPersonas [cantidadPersonas]
@@ -167,10 +165,14 @@ end
 to RevisarEstadoPersonas
   let numeroRandom 0
   set numeroRandom (random 100)
+  let tiempoRecuperacionJovenes (tiempoRecuperacionContagio)
+  let tiempoRecuperacionAdultos ((2 * 24) + tiempoRecuperacionContagio) ; A los adultos se les suma dos dias en el tiempo de recuperacion
+  let tiempoRecuperacionAncianos ((5 * 24) + tiempoRecuperacionContagio) ; A los ancianos se les suma cinco dias en el tiempo de recuperacion
 
-  ask personas with [(estadoContagio = 2) and (vivo? = true)]
+  ;Revision jovenes
+  ask personas with [(estadoContagio = 2) and (vivo? = true) and (rangoEdad = 1)]
   [
-    ifelse(tiempoConCovid = tiempoRecuperacionContagio)
+    ifelse(tiempoConCovid = tiempoRecuperacionJovenes)
     [
       ifelse (member? numeroRandom (range probabilidadMuerte))
       [
@@ -187,6 +189,51 @@ to RevisarEstadoPersonas
       set tiempoConCovid (tiempoConCovid + 1)
     ]
   ]
+
+
+  ;Revision adultos
+  ask personas with [(estadoContagio = 2) and (vivo? = true) and (rangoEdad = 2)]
+  [
+    ifelse(tiempoConCovid = tiempoRecuperacionAdultos)
+    [
+      ifelse (member? numeroRandom (range probabilidadMuerte))
+      [
+        set vivo? false
+        hide-turtle
+        set estadoContagio 0
+      ]
+      [
+        set estadoContagio 3
+        set color turquoise
+      ]
+    ]
+    [
+      set tiempoConCovid (tiempoConCovid + 1)
+    ]
+  ]
+
+
+  ;Revision ancianos
+  ask personas with [(estadoContagio = 2) and (vivo? = true) and (rangoEdad = 3)]
+  [
+    ifelse(tiempoConCovid = tiempoRecuperacionAncianos)
+    [
+      ifelse (member? numeroRandom (range probabilidadMuerte))
+      [
+        set vivo? false
+        hide-turtle
+        set estadoContagio 0
+      ]
+      [
+        set estadoContagio 3
+        set color turquoise
+      ]
+    ]
+    [
+      set tiempoConCovid (tiempoConCovid + 1)
+    ]
+  ]
+
 end
 
 to ActualizarMuro [diasAislamiento]
@@ -241,8 +288,8 @@ end
 GRAPHICS-WINDOW
 210
 10
-647
-448
+640
+441
 -1
 -1
 12.8
@@ -375,7 +422,7 @@ CHOOSER
 escenario
 escenario
 "Libertad total" "Cuarentena" "Aislamiento moderado" "Aislamiento exhaustivo"
-1
+3
 
 MONITOR
 689
