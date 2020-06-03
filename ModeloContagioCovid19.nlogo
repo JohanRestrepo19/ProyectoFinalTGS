@@ -1,14 +1,14 @@
 breed [personas persona]
 
-personas-own [estadoContagio rangoEdad nivelEnfermedadPreexistente probabilidadMuerte tiempoConCovid vivo?]
+patches-own [bloqueo]
 
-globals [colorContagiado diasTranscurridos tiempoRecuperacionContagio]
+personas-own [estadoContagio rangoEdad nivelEnfermedadPreexistente probabilidadMuerte tiempoConCovid vivo? ubicado?]
+
+globals [colorContagiado diasTranscurridos tiempoRecuperacionContagio xcorFranja]
 
 ;------------------------------------------------------------------
 
 to ConstruirMundo; terminar craacon mundo
-  let xcorFranja ceiling (((world-width / 2) / 3) * -1)
-  show xcorFranja
 
   ifelse(escenario = "Libertad total")
   [
@@ -17,8 +17,8 @@ to ConstruirMundo; terminar craacon mundo
   [
     ifelse(escenario = "Cuarentena")
     [
-      ask patches [set pcolor white]
-      ask patches with [pxcor = xcorFranja] [set pcolor black]
+      ask patches [set pcolor white set bloqueo 0]
+      ask patches with [pxcor = xcorFranja] [set pcolor black set bloqueo 1] ; la propiedad bloqueo es 1 si la parcela está bloqueada o 0 si no lo está
     ]
     [
       ifelse(escenario = "Aislamiento moderado")
@@ -49,6 +49,7 @@ to CrearPersonas [cantidadPersonas]
     set nivelEnfermedadPreexistente 1;  nivelEnfermedadPreexistente ----> 0: indefinido   1: inexistente   2: leve   3: medio   4: terminal
     set tiempoConCovid 0
     set vivo? true
+    set ubicado? false
 
     set color green
     setxy (random-xcor) (random-ycor)
@@ -56,7 +57,7 @@ to CrearPersonas [cantidadPersonas]
 
   ask personas
   [
-    if(patch-ahead 1 = nobody); esto lo que hace es verificar si se encentran en una parcela de la que no pueden moverse y reposiciona a las personas
+    if((patch-ahead 1 = nobody) or (([bloqueo] of patch-here) = 1)); esto lo que hace es verificar si se encentran en una parcela de la que no pueden moverse y reposiciona a las personas
     [setxy random-xcor random-ycor]
   ]
 
@@ -93,6 +94,22 @@ to CrearPersonas [cantidadPersonas]
   ask one-of personas [set estadoContagio 2 set color colorContagiado]
 end
 
+to PosicionarPersonas [porcentajeDesobedientes]
+  let xcorDesobedientes xcorFranja
+  let coordenadasXObedientes (range (xcorDesobedientes + 2) max-pxcor)
+  let coordenadasXDesobedientes (range min-pxcor (xcorDesobedientes))
+  let cantidadDesobedientes (poblacionTotal * (porcentajeDesobedientes / 100))
+  let cantidadObedientes (poblacionTotal - cantidadDesobedientes)
+
+  ifelse(escenario = "Cuarentena")
+  [
+    ask n-of cantidadObedientes personas with [ubicado? = false] [ setxy (one-of coordenadasXObedientes) (random-ycor) set ubicado? true]
+    ask n-of cantidadDesobedientes personas with [ubicado? = false] [setxy (one-of coordenadasXDesobedientes) (random-ycor) set ubicado? true]
+    ask personas with [estadoContagio = 2] [setxy one-of coordenadasXDesobedientes random-ycor]
+  ]
+  []
+end
+
 to EstablecerProbabilidadMuerte
   ask personas with [nivelEnfermedadPreexistente = 2] [set probabilidadMuerte (probabilidadMuerte + 5)] ;Las personas que tengan un nivel de enfermedad leve se le suma un 5% en probabilidad de morir
 
@@ -102,13 +119,35 @@ to EstablecerProbabilidadMuerte
 end
 
 to MoverPersonas
-
-  ask personas
+  ifelse(escenario = "Libertad total")
   [
-    ifelse (can-move? 0.5)
-    [rt (random 50 - random 50) fd 0.1]
-    [rt 180]
+    ask personas
+    [
+      ifelse(can-move? 0.5)
+      [rt (random 50 - random 50) fd 0.1]
+      [rt 180]
+    ]
   ]
+  [
+    ifelse(escenario = "Cuarentena"); movimiento para las personas que se encuentran en cuarentena y que no pueden pasar mas allá de la franja
+    [
+      ask personas
+      [
+        ifelse(([bloqueo] of patch-here = 0) and (can-move? 0.5))
+        [rt (random 50 - random 50) fd 0.1]
+        [rt 180 fd 0.3]
+      ]
+    ]
+    []
+  ]
+
+  ;ask personas
+  ;[
+
+    ;ifelse (can-move? 0.5)
+    ;[rt (random 50 - random 50) fd 0.1]
+    ;[rt 180]
+  ;]
 
 end
 
@@ -166,8 +205,10 @@ to setUp
   set colorContagiado pink
   set diasTranscurridos 0
   set tiempoRecuperacionContagio 336 ; 336 ticks son 14 días que tarda la recuperacion de una persona que ha estado contagiada
+  set xcorFranja ceiling (((world-width / 2) / 3) * -1)
   ConstruirMundo
   CrearPersonas poblacionTotal
+  PosicionarPersonas 20 ;----> el 20% de la poblacion es desobediente
   EstablecerProbabilidadMuerte
 end
 @#$#@#$#@
@@ -308,7 +349,7 @@ CHOOSER
 escenario
 escenario
 "Libertad total" "Cuarentena" "Aislamiento moderado" "Aislamiento exhaustivo"
-0
+1
 
 MONITOR
 689
