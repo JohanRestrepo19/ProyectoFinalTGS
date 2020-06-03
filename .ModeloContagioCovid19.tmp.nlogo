@@ -2,7 +2,7 @@ breed [personas persona]
 
 patches-own [bloqueo]
 
-personas-own [estadoContagio rangoEdad nivelEnfermedadPreexistente probabilidadMuerte tiempoConCovid vivo? ubicado?]
+personas-own [estadoContagio rangoEdad nivelEnfermedadPreexistente probabilidadMuerte tiempoConCovid vivo? ubicado? mover?]
 
 globals [colorContagiado diasTranscurridos tiempoRecuperacionContagio xcorFranja]
 
@@ -22,10 +22,10 @@ to ConstruirMundo; terminar craacon mundo
     ]
     [
       ifelse(escenario = "Aislamiento moderado")
-      []
+      [ask patches [set pcolor white]]
       [
         if(escenario = "Aislamiento exhaustivo")
-        []
+        [ask patches [set pcolor white]]
       ]
     ]
   ]
@@ -50,6 +50,7 @@ to CrearPersonas [cantidadPersonas]
     set tiempoConCovid 0
     set vivo? true
     set ubicado? false
+    set mover? true
 
     set color green
     setxy (random-xcor) (random-ycor)
@@ -101,13 +102,12 @@ to PosicionarPersonas [porcentajeDesobedientes]
   let cantidadDesobedientes (poblacionTotal * (porcentajeDesobedientes / 100))
   let cantidadObedientes (poblacionTotal - cantidadDesobedientes)
 
-  ifelse(escenario = "Cuarentena")
+  if(escenario = "Cuarentena")
   [
     ask n-of cantidadObedientes personas with [ubicado? = false] [ setxy (one-of coordenadasXObedientes) (random-ycor) set ubicado? true]
     ask n-of cantidadDesobedientes personas with [ubicado? = false] [setxy (one-of coordenadasXDesobedientes) (random-ycor) set ubicado? true]
     ask personas with [estadoContagio = 2] [setxy one-of coordenadasXDesobedientes random-ycor]
   ]
-  []
 end
 
 to EstablecerProbabilidadMuerte
@@ -118,36 +118,45 @@ to EstablecerProbabilidadMuerte
   ask personas with [nivelEnfermedadPreexistente = 4] [set probabilidadMuerte (probabilidadMuerte + 15)] ;Las personas que tengan un nivel de enfermedad terminal se le suma un 15%
 end
 
-to MoverPersonas
-  ifelse(escenario = "Libertad total")
+to EstablecerMovimiento [porcentajePersonasMovimiento]
+  let cantidadPersonasMovimiento 0
+
+  ifelse(escenario = "Aislamiento moderado")
   [
-    ask personas
-    [
-      ifelse(can-move? 0.5)
-      [rt (random 50 - random 50) fd 0.1]
-      [rt 180]
-    ]
+    set cantidadPersonasMovimiento (poblacionTotal * (porcentajePersonasMovimiento / 100))
+    ask personas with [estadoContagio = 1] [set mover? false]
+    ask n-of cantidadPersonasMovimiento personas with [estadoContagio = 1] [set mover? true]
   ]
   [
-    ifelse(escenario = "Cuarentena"); movimiento para las personas que se encuentran en cuarentena y que no pueden pasar mas allá de la franja
+    if(escenario = "Aislamiento exhaustivo")
     [
-      ask personas
+      set cantidadPersonasMovimiento (poblacionTotal * ((floor (porcentajePersonasMovimiento / 2)) / 100))
+      ask personas with [estadoContagio = 1] [set mover? false]
+      ask n-of cantidadPersonasMovimiento personas with [estadoContagio = 1] [set mover? true]
+    ]
+  ]
+
+end
+
+to MoverPersonas
+
+  ifelse(escenario = "Cuarentena"); movimiento para las personas que se encuentran en cuarentena y que no pueden pasar mas allá de la franja
+  [
+    ask personas with [mover? = true]
       [
         ifelse(([bloqueo] of patch-here = 0) and (can-move? 0.5))
         [rt (random 50 - random 50) fd 0.1]
         [rt 180 fd 0.2]
       ]
-    ]
-    []
   ]
+  [
+    ask personas with [mover? = true]
+    [
+      ifelse(can-move? 0.5)
+      [rt (random 50 - random 50) fd 0.1]
+      [rt 180]
+    ]
 
-  ;ask personas
-  ;[
-
-    ;ifelse (can-move? 0.5)
-    ;[rt (random 50 - random 50) fd 0.1]
-    ;[rt 180]
-  ;]
 
 end
 
@@ -210,7 +219,7 @@ to Ejecutar
   MoverPersonas
   Contagiar
   RevisarEstadoPersonas
-  ActualizarMuro 30 ;----> 10 dias de aislamiento
+  ActualizarMuro 30 ;----> x dias de aislamiento
   ActualizarDiasTranscurridos
   tick
 end
@@ -225,8 +234,9 @@ to setUp
   set xcorFranja ceiling (((world-width / 2) / 3) * -1)
   ConstruirMundo
   CrearPersonas poblacionTotal
-  PosicionarPersonas 20 ;----> el 20% de la poblacion es desobediente
+  PosicionarPersonas 10 ;----> el 10% de la poblacion es desobediente
   EstablecerProbabilidadMuerte
+  EstablecerMovimiento 25 ;----> porcentaje de personas que se pueden mover en aislamiento moderado, si el exhaustivo va a ser la mitad
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -299,7 +309,7 @@ poblacionTotal
 poblacionTotal
 0
 1000
-1000.0
+500.0
 10
 1
 NIL
@@ -339,10 +349,10 @@ diasTranscurridos
 11
 
 PLOT
-664
-353
-1062
-525
+197
+462
+610
+652
 Grafico
 dias
 NIL
@@ -463,6 +473,37 @@ MONITOR
 323
 Personas vivas
 count personas with [vivo? = true and (hidden? = false)]
+17
+1
+11
+
+PLOT
+640
+460
+1075
+656
+Personas muertas
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Jovenes muertos" 1.0 0 -2674135 true "" "plotxy (diasTranscurridos) (count personas with [(vivo? = false) and (hidden? = true) and (rangoEdad = 1)])"
+"Adultos muertos" 1.0 0 -6459832 true "" "plotxy (diasTranscurridos) (count personas with [(vivo? = false) and (hidden? = true) and (rangoEdad = 2)])"
+"Ancianos muertos" 1.0 0 -13840069 true "" "plotxy (diasTranscurridos) (count personas with [(vivo? = false) and (hidden? = true) and (rangoEdad = 3)])"
+
+MONITOR
+1164
+22
+1311
+67
+Personas en movimiento
+count personas with [mover? = true and vivo? = true and hidden? = false]
 17
 1
 11
