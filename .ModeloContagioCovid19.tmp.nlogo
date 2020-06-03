@@ -18,7 +18,7 @@ to ConstruirMundo; terminar craacon mundo
     ifelse(escenario = "Cuarentena")
     [
       ask patches [set pcolor white set bloqueo 0]
-      ask patches with [pxcor = xcorFranja] [set pcolor black set bloqueo 1] ; la propiedad bloqueo es 1 si la parcela está bloqueada o 0 si no lo está
+      ask patches with [pxcor = xcorFranja] [set pcolor black set bloqueo 1] ;  bloqueo ---> 0: las personas se pueden mover    1: las personas no se pueden mover
     ]
     [
       ifelse(escenario = "Aislamiento moderado")
@@ -65,7 +65,7 @@ to CrearPersonas [cantidadPersonas]
   [
     set shape "person student"
     set rangoEdad 1
-    set probabilidadMuerte 3 ; ----> Los jovenes tienen 5% de probabilidades de morir
+    set probabilidadMuerte 3 ; ----> Los jovenes tienen 3% de probabilidades de morir
   ]
 
   ask n-of cantidadAdultos personas with [rangoEdad = 0]
@@ -97,9 +97,7 @@ end
 to PosicionarPersonas [porcentajeDesobedientes]
   let xcorDesobedientes xcorFranja
   let coordenadasXObedientes (range (xcorDesobedientes + 2) max-pxcor)
-
   let coordenadasXDesobedientes (range min-pxcor (xcorDesobedientes))
-  show coordenadasXDesobedientes
   let cantidadDesobedientes (poblacionTotal * (porcentajeDesobedientes / 100))
   let cantidadObedientes (poblacionTotal - cantidadDesobedientes)
 
@@ -137,7 +135,7 @@ to MoverPersonas
       [
         ifelse(([bloqueo] of patch-here = 0) and (can-move? 0.5))
         [rt (random 50 - random 50) fd 0.1]
-        [rt 180 fd 0.3]
+        [rt 180 fd 0.2]
       ]
     ]
     []
@@ -183,6 +181,22 @@ to RevisarEstadoPersonas
   ]
 end
 
+to ActualizarMuro [diasAislamiento]
+  let ticksAislamiento (diasAislamiento * 24) ; como el dia dura 24 ticks se multiplica por el numero de días
+
+  if(escenario = "Cuarentena")
+  [
+    if (ticks > ticksAislamiento)
+    [
+      ask patches with [bloqueo = 1]
+      [
+        if(any? patches with [bloqueo = 1])
+        [set bloqueo 0 set pcolor white]
+      ]
+    ]
+  ]
+end
+
 to ActualizarDiasTranscurridos
   if( (ticks > 1) and ((ticks mod 24) = 0) )
   [set diasTranscurridos (diasTranscurridos + 1)]
@@ -196,6 +210,7 @@ to Ejecutar
   MoverPersonas
   Contagiar
   RevisarEstadoPersonas
+  ActualizarMuro 30 ;----> 10 dias de aislamiento
   ActualizarDiasTranscurridos
   tick
 end
@@ -284,7 +299,7 @@ poblacionTotal
 poblacionTotal
 0
 1000
-200.0
+1000.0
 10
 1
 NIL
@@ -326,7 +341,7 @@ diasTranscurridos
 PLOT
 664
 353
-989
+1062
 525
 Grafico
 dias
